@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>RNDM</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
+
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    :root {
+      --bg-0: #06060c;
+      --bg-1: #0a0a14;
+      --bg-2: #11111d;
+      --bg-3: #181828;
+      --border: rgba(0, 243, 255, 0.15);
+      --border-strong: rgba(0, 243, 255, 0.45);
+      --cyan: #00f3ff;
+      --cyan-dim: rgba(0, 243, 255, 0.6);
+      --magenta: #ff00ff;
+      --magenta-dim: rgba(255, 0, 255, 0.6);
+      --yellow: #fff200;
+      --green: #00ff9d;
+      --red: #ff3366;
+      --text: #e8e8f5;
+      --text-dim: #8a8aa8;
+      --text-mute: #50506a;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { min-height: 100%; background: var(--bg-0); color: var(--text); font-family: 'Space Grotesk', -apple-system, sans-serif; }
+    body {
+      background:
+        radial-gradient(ellipse at top, rgba(0, 243, 255, 0.10) 0%, transparent 46%),
+        radial-gradient(ellipse at bottom, rgba(255, 0, 255, 0.08) 0%, transparent 52%),
+        var(--bg-0);
+      background-attachment: fixed;
+      overflow-x: hidden;
+    }
+    button, input { font-family: inherit; }
+    button { border: none; background: none; color: inherit; cursor: pointer; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+
+    .app { max-width: 480px; min-height: 100vh; margin: 0 auto; padding-bottom: calc(22px + var(--safe-bottom)); }
+    .topbar {
+      position: sticky; top: 0; z-index: 10;
+      padding: calc(14px + var(--safe-top)) 18px 12px;
+      display: flex; align-items: center; justify-content: space-between;
+      background: rgba(6, 6, 12, 0.88);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+    .logo { font-weight: 800; font-size: 24px; letter-spacing: -0.04em; display: flex; align-items: center; gap: 7px; }
+    .logo-dot { width: 8px; height: 8px; background: var(--cyan); border-radius: 50%; box-shadow: 0 0 16px var(--cyan); animation: pulse 1.4s infinite; }
+    .logo .accent { color: var(--magenta); text-shadow: 0 0 12px rgba(255,0,255,.55); }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.25} }
+
+    .room-chip { display:flex; align-items:center; gap:8px; padding: 6px 10px; border:1px solid var(--border); border-radius: 999px; background: var(--bg-2); font-size: 11px; color: var(--text-dim); }
+    .room-chip strong { color: var(--cyan); letter-spacing: .12em; }
+
+    .screen { padding: 18px 14px 28px; }
+    .screen-title { font-size: 30px; font-weight: 800; letter-spacing: -0.04em; padding: 0 6px; }
+    .screen-sub { padding: 0 6px; margin: 4px 0 18px; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: .16em; text-transform: uppercase; }
+
+    .hero { min-height: calc(100vh - 70px); display:flex; flex-direction:column; justify-content:center; padding: 34px 24px; }
+    .hero-title { font-size: 58px; font-weight: 800; line-height: .9; letter-spacing: -.06em; text-align:center; margin-bottom: 10px; }
+    .hero-title span { color: var(--magenta); text-shadow: 0 0 22px rgba(255,0,255,.55); }
+    .tagline { text-align:center; color: var(--cyan); font-family:'JetBrains Mono', monospace; font-size: 11px; letter-spacing: .22em; text-transform: uppercase; margin-bottom: 34px; }
+
+    .card {
+      background: linear-gradient(135deg, rgba(0,243,255,.035), rgba(255,0,255,.025)), var(--bg-1);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 16px;
+      margin-bottom: 14px;
+      position: relative;
+      overflow: hidden;
+    }
+    .card.glow { border-color: var(--magenta-dim); box-shadow: 0 0 0 1px rgba(255,0,255,.15), 0 0 34px rgba(255,0,255,.08); }
+    .label { display:block; font-family:'JetBrains Mono', monospace; font-size: 10px; color: var(--text-dim); letter-spacing: .18em; text-transform: uppercase; margin-bottom: 8px; }
+    .input { width:100%; padding: 15px 16px; border-radius: 14px; border:1px solid var(--border); background: var(--bg-2); color: var(--text); font-size: 16px; font-weight: 700; }
+    .input:focus { outline: none; border-color: var(--cyan); box-shadow: 0 0 0 4px rgba(0,243,255,.10); }
+    .row { display:grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+    .btn { width:100%; padding: 15px 14px; border-radius: 14px; font-weight: 800; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; display:flex; justify-content:center; align-items:center; gap:8px; transition: transform .15s, opacity .15s; }
+    .btn:active { transform: scale(.97); }
+    .btn:disabled { opacity:.45; cursor:default; }
+    .btn-primary { background: linear-gradient(135deg, var(--cyan), #00b8cc); color: var(--bg-0); box-shadow: 0 0 24px rgba(0,243,255,.28); }
+    .btn-magenta { background: linear-gradient(135deg, var(--magenta), #bb00cc); color:white; box-shadow: 0 0 24px rgba(255,0,255,.28); }
+    .btn-ghost { background: var(--bg-2); border:1px solid var(--border); color: var(--text); }
+    .btn-danger { background: linear-gradient(135deg, var(--red), #cc0033); color:white; }
+
+    .status-grid { display:grid; gap:10px; }
+    .player-card { display:grid; grid-template-columns: 46px 1fr auto; align-items:center; gap:12px; padding: 13px; border:1px solid var(--border); border-radius: 16px; background: var(--bg-1); }
+    .avatar { width:42px; height:42px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; background: linear-gradient(135deg, rgba(0,243,255,.20), rgba(255,0,255,.20)); border:1px solid var(--border-strong); }
+    .p-name { font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .p-meta { font-family:'JetBrains Mono', monospace; font-size:10px; color: var(--text-dim); margin-top:2px; text-transform:uppercase; letter-spacing:.10em; }
+    .badge { font-family:'JetBrains Mono', monospace; font-size:9px; padding:5px 8px; border-radius:999px; border:1px solid var(--border); color:var(--text-dim); text-transform:uppercase; letter-spacing:.10em; }
+    .badge.host { color:var(--magenta); border-color: var(--magenta-dim); background: rgba(255,0,255,.07); }
+    .badge.locked { color:var(--green); border-color: rgba(0,255,157,.45); background: rgba(0,255,157,.07); }
+    .badge.wait { color:var(--yellow); border-color: rgba(255,242,0,.38); background: rgba(255,242,0,.06); }
+
+    .numbers-grid { display:grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+    .num-field { position:relative; }
+    .num-field span { position:absolute; top:6px; left:8px; font-family:'JetBrains Mono', monospace; font-size: 8px; color:var(--text-mute); }
+    .num-input { width:100%; padding: 20px 6px 10px; min-height: 62px; border-radius: 14px; text-align:center; font-family:'JetBrains Mono', monospace; font-size: 20px; font-weight:800; background: var(--bg-2); color:var(--text); border:1px solid var(--border); }
+    .num-input:focus { outline:none; border-color: var(--cyan); }
+
+    .table-wrap { overflow-x:auto; border:1px solid var(--border); border-radius: 18px; background: var(--bg-1); }
+    table { width:100%; border-collapse: collapse; font-family:'JetBrains Mono', monospace; font-size: 11px; min-width: 430px; }
+    th, td { padding: 12px 10px; text-align:center; border-bottom:1px solid rgba(0,243,255,.08); }
+    th { color:var(--text-dim); font-size:9px; text-transform:uppercase; letter-spacing:.12em; background: rgba(255,255,255,.02); }
+    td:first-child, th:first-child { color:var(--cyan); font-weight:800; }
+    tr:last-child td { border-bottom:none; }
+
+    .arena-card { text-align:center; padding: 22px 16px; }
+    .round-pill { display:inline-flex; padding:7px 12px; border:1px solid var(--border); border-radius:999px; color:var(--cyan); font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.16em; text-transform:uppercase; margin-bottom: 16px; }
+    .slot-window {
+      margin: 0 auto 18px; width: 190px; height: 126px; border-radius: 24px; display:flex; align-items:center; justify-content:center;
+      background: radial-gradient(circle at center, rgba(0,243,255,.13), rgba(255,0,255,.05) 58%, var(--bg-2));
+      border:1px solid var(--border-strong); box-shadow: inset 0 0 30px rgba(0,243,255,.08), 0 0 44px rgba(0,243,255,.10);
+      position: relative; overflow:hidden;
+    }
+    .slot-window.spinning { animation: shake .18s infinite, slotPulse .45s infinite; border-color: var(--magenta-dim); box-shadow: 0 0 48px rgba(255,0,255,.20); }
+    .slot-window.flash-win {
+      animation: finalFlash .18s 5 alternate;
+      border-color: var(--yellow);
+      box-shadow:
+        0 0 30px rgba(255,242,0,.45),
+        0 0 70px rgba(255,242,0,.22),
+        inset 0 0 40px rgba(255,255,255,.12);
+    }
+    .slot-window.flash-jackpot {
+      animation: jackpotFlash .12s 10 alternate;
+      border-color: var(--yellow);
+      box-shadow:
+        0 0 40px rgba(255,242,0,.60),
+        0 0 90px rgba(255,0,255,.28),
+        inset 0 0 55px rgba(255,255,255,.18);
+    }
+    @keyframes slotPulse { 0% { filter: brightness(1); } 50% { filter: brightness(1.35); } 100% { filter: brightness(1); } }
+    @keyframes finalFlash { from { filter: brightness(1); transform: scale(1); } to { filter: brightness(1.9); transform: scale(1.03); } }
+    @keyframes jackpotFlash { 0% { filter: brightness(1); transform: scale(1); } 100% { filter: brightness(2.2); transform: scale(1.05); } }
+    @keyframes shake { 0%{transform:translateX(0)} 25%{transform:translateX(-1px)} 75%{transform:translateX(1px)} 100%{transform:translateX(0)} }
+    .slot-number { font-family:'JetBrains Mono', monospace; font-size: 70px; line-height:1; font-weight:800; color:var(--cyan); text-shadow: 0 0 22px rgba(0,243,255,.65); letter-spacing:-.08em; }
+    .slot-window.spinning .slot-number { color: var(--magenta); text-shadow: 0 0 22px rgba(255,0,255,.70); }
+
+    .pick-row { display:grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 14px 0; }
+    .pick-card { padding: 12px 8px; border:1px solid var(--border); border-radius: 15px; background: var(--bg-2); text-align:center; }
+    .pick-card.win { border-color: rgba(0,255,157,.55); box-shadow: 0 0 22px rgba(0,255,157,.10); }
+    .pick-card.jackpot { border-color: rgba(255,242,0,.75); box-shadow: 0 0 30px rgba(255,242,0,.14); }
+    .pick-name { font-size: 11px; color:var(--text-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .pick-num { font-family:'JetBrains Mono', monospace; font-size: 28px; font-weight:800; color:var(--text); margin-top: 4px; }
+    .pick-diff { font-family:'JetBrains Mono', monospace; font-size: 10px; color:var(--text-mute); margin-top: 2px; }
+
+    .result-list { display:flex; flex-direction:column; gap:8px; margin-top: 12px; }
+    .result-row { display:grid; grid-template-columns: 1fr auto; align-items:center; padding: 12px 13px; border:1px solid var(--border); border-radius: 14px; background: var(--bg-2); }
+    .amount { font-family:'JetBrains Mono', monospace; font-weight:800; font-size: 15px; }
+    .amount.win { color:var(--green); }
+    .amount.loss { color:var(--red); }
+    .amount.draw { color:var(--yellow); }
+
+    .toast { position:fixed; left:50%; bottom: calc(24px + var(--safe-bottom)); transform:translateX(-50%); z-index:50; padding: 12px 18px; border-radius:999px; background: var(--bg-2); border:1px solid var(--border-strong); box-shadow: 0 10px 34px rgba(0,0,0,.55); color:var(--cyan); font-weight:700; font-size:13px; white-space:nowrap; }
+    .hint { color: var(--text-dim); font-size: 13px; line-height: 1.55; }
+    .error { margin-bottom: 12px; padding: 11px 12px; border:1px solid rgba(255,51,102,.35); background: rgba(255,51,102,.08); color:var(--red); border-radius: 13px; font-size: 13px; text-align:center; }
+
+    @media (min-width: 900px) {
+      .app { max-width: none; display:grid; grid-template-columns: 280px minmax(0, 760px) 1fr; }
+      .topbar { grid-column: 1 / -1; }
+      .screen, .hero { grid-column: 2; }
+      .hero { max-width: 520px; width: 100%; justify-self: center; }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useMemo, useState, useEffect } = React;
+
+    const uid = () => 'p_' + Math.random().toString(36).slice(2, 10);
+    const roomCode = () => Math.random().toString(36).slice(2, 6).toUpperCase();
+    const clampNum = v => Math.max(0, Math.min(99, Number(v)));
+    const pad2 = n => String(n).padStart(2, '0');
+
+    function secureRandom99() {
+      const max = Math.floor(0x100000000 / 100) * 100;
+      const array = new Uint32Array(1);
+      let value;
+      do {
+        crypto.getRandomValues(array);
+        value = array[0];
+      } while (value >= max);
+      return value % 100;
+    }
+
+    function calculateMiniGame(players, roundIndex, randomNumber) {
+      const picks = players.map(p => ({ ...p, pick: Number(p.numbers[roundIndex]) }));
+      const exact = picks.filter(p => p.pick === randomNumber);
+      const result = Object.fromEntries(players.map(p => [p.id, 0]));
+      let winnerIds = [];
+      let isJackpot = false;
+      let label = '';
+
+      if (exact.length === 3) {
+        label = 'Triple exact tie — no win/loss';
+        winnerIds = exact.map(p => p.id);
+        isJackpot = true;
+      } else if (exact.length === 2) {
+        isJackpot = true;
+        winnerIds = exact.map(p => p.id);
+        exact.forEach(p => result[p.id] = 100);
+        picks.filter(p => !winnerIds.includes(p.id)).forEach(p => result[p.id] = -200);
+        label = 'Double jackpot';
+      } else if (exact.length === 1) {
+        isJackpot = true;
+        winnerIds = [exact[0].id];
+        result[exact[0].id] = 100;
+        picks.filter(p => p.id !== exact[0].id).forEach(p => result[p.id] = -50);
+        label = 'Exact match jackpot';
+      } else {
+        const diffs = picks.map(p => Math.abs(p.pick - randomNumber));
+        const minDiff = Math.min(...diffs);
+        const winners = picks.filter(p => Math.abs(p.pick - randomNumber) === minDiff);
+        winnerIds = winners.map(p => p.id);
+
+        if (winners.length === 3) {
+          label = 'Three-way tie — no win/loss';
+        } else if (winners.length === 2) {
+          winners.forEach(p => result[p.id] = 10);
+          picks.filter(p => !winnerIds.includes(p.id)).forEach(p => result[p.id] = -20);
+          label = 'Two-way closest tie';
+        } else {
+          result[winners[0].id] = 20;
+          picks.filter(p => p.id !== winners[0].id).forEach(p => result[p.id] = -10);
+          label = 'Closest number wins';
+        }
+      }
+
+      return {
+        round: roundIndex + 1,
+        randomNumber,
+        picks: Object.fromEntries(picks.map(p => [p.id, p.pick])),
+        differences: Object.fromEntries(picks.map(p => [p.id, Math.abs(p.pick - randomNumber)])),
+        result,
+        winnerIds,
+        isJackpot,
+        label,
+        completedAt: new Date().toISOString()
+      };
+    }
+
+    function App() {
+      const [me, setMe] = useState(null);
+      const [room, setRoom] = useState(null);
+      const [screen, setScreen] = useState('login');
+      const [toast, setToast] = useState('');
+      const [spinning, setSpinning] = useState(false);
+      const [spinDisplay, setSpinDisplay] = useState(0);
+      const [error, setError] = useState('');
+      const [flashState, setFlashState] = useState('');
+
+      const showToast = msg => { setToast(msg); setTimeout(() => setToast(''), 2200); };
+
+      const players = room?.players || [];
+      const isHost = me && room?.hostId === me.id;
+      const myPlayer = players.find(p => p.id === me?.id);
+      const currentRoundIndex = room?.currentRound || 0;
+      const currentResult = room?.miniGames?.[currentRoundIndex];
+
+      const totals = useMemo(() => {
+        const base = Object.fromEntries(players.map(p => [p.id, 0]));
+        (room?.miniGames || []).forEach(mg => {
+          if (!mg) return;
+          Object.entries(mg.result || {}).forEach(([id, amount]) => base[id] = (base[id] || 0) + amount);
+        });
+        return base;
+      }, [room]);
+
+      function createRoom(nickname) {
+        const id = uid();
+        const code = roomCode();
+        const player = { id, nickname, isHost: true, locked: false, numbers: Array(10).fill(''), joinedAt: new Date().toISOString() };
+        setMe({ id, nickname });
+        setRoom({ code, hostId: id, status: 'lobby', currentRound: 0, players: [player], miniGames: [], createdAt: new Date().toISOString() });
+        setScreen('lobby');
+        showToast('Room created');
+      }
+
+      function joinRoom(nickname, code) {
+        if (!room || room.code !== code.toUpperCase()) {
+          setError('Prototype note: create a room first in this browser. Firebase sync will enable real multi-device rooms.');
+          return;
+        }
+        if (players.length >= 3) { setError('Room already has 3 players.'); return; }
+        const id = uid();
+        const player = { id, nickname, isHost: false, locked: false, numbers: Array(10).fill(''), joinedAt: new Date().toISOString() };
+        setMe({ id, nickname });
+        setRoom(r => ({ ...r, players: [...r.players, player] }));
+        setScreen('lobby');
+      }
+
+      function demoFillPlayers() {
+        if (!room) return;
+        setRoom(r => {
+          const names = ['NOVA', 'KAI', 'ZED'];
+          const existing = [...r.players];
+          while (existing.length < 3) {
+            existing.push({ id: uid(), nickname: names[existing.length], isHost: false, locked: false, numbers: Array(10).fill(''), joinedAt: new Date().toISOString() });
+          }
+          return { ...r, players: existing };
+        });
+      }
+
+      function startNumberEntry() {
+        if (players.length !== 3) return showToast('Need exactly 3 players');
+        setRoom(r => ({ ...r, status: 'number_entry' }));
+        setScreen('numbers');
+      }
+
+      function updateMyNumber(index, value) {
+        const clean = value === '' ? '' : clampNum(value);
+        setRoom(r => ({
+          ...r,
+          players: r.players.map(p => p.id === me.id ? { ...p, numbers: p.numbers.map((n, i) => i === index ? clean : n) } : p)
+        }));
+      }
+
+      function lockNumbers() {
+        const nums = myPlayer.numbers.map(Number);
+        if (nums.length !== 10 || myPlayer.numbers.some(n => n === '' || Number.isNaN(Number(n)))) return showToast('Enter all 10 numbers');
+        setRoom(r => {
+          const updatedPlayers = r.players.map(p => p.id === me.id ? { ...p, locked: true, numbers: p.numbers.map(Number) } : p);
+          const allLocked = updatedPlayers.length === 3 && updatedPlayers.every(p => p.locked);
+          return { ...r, players: updatedPlayers, status: allLocked ? 'reveal_board' : 'number_entry' };
+        });
+        showToast('Numbers locked');
+      }
+
+      function demoLockAll() {
+        setRoom(r => ({
+          ...r,
+          status: 'reveal_board',
+          players: r.players.map(p => ({ ...p, locked: true, numbers: p.numbers.map(n => n === '' ? Math.floor(Math.random() * 100) : Number(n)) }))
+        }));
+        setScreen('reveal');
+      }
+
+      function spinRound() {
+        if (spinning || !isHost) return;
+        setSpinning(true);
+        setRoom(r => ({ ...r, status: 'spinning' }));
+        const timer = setInterval(() => setSpinDisplay(Math.floor(Math.random() * 100)), 55);
+        setTimeout(() => {
+          clearInterval(timer);
+          const randomNumber = secureRandom99();
+          setSpinDisplay(randomNumber);
+          setFlashState('flash-win');
+          setRoom(r => {
+            const miniGame = calculateMiniGame(r.players, r.currentRound, randomNumber);
+            if (miniGame.isJackpot) {
+              setFlashState('flash-jackpot');
+            }
+            const miniGames = [...r.miniGames];
+            miniGames[r.currentRound] = miniGame;
+            return { ...r, status: 'result', miniGames };
+          });
+          setSpinning(false);
+          setTimeout(() => setFlashState(''), 1000);
+        }, 2400);
+      }
+
+      function nextRound() {
+        setRoom(r => {
+          if (r.currentRound >= 9) {
+            setScreen('summary');
+            return { ...r, status: 'completed', completedAt: new Date().toISOString() };
+          }
+          return { ...r, currentRound: r.currentRound + 1, status: 'mini_game_ready' };
+        });
+      }
+
+      function startNewGame() {
+        setRoom(r => ({
+          ...r,
+          status: 'number_entry',
+          currentRound: 0,
+          miniGames: [],
+          completedAt: null,
+          players: r.players.map(p => ({
+            ...p,
+            locked: false,
+            numbers: Array(10).fill('')
+          }))
+        }));
+        setSpinDisplay(0);
+        setScreen('numbers');
+        showToast('New game started');
+      }
+
+      function resetPrototype() { setMe(null); setRoom(null); setScreen('login'); setError(''); }
+
+      return <div className="app">
+        {screen !== 'login' && <TopBar room={room} me={me} onReset={resetPrototype} />}
+        {screen === 'login' && <Login onCreate={createRoom} onJoin={joinRoom} error={error} />}
+        {screen === 'lobby' && <Lobby room={room} isHost={isHost} onDemoFill={demoFillPlayers} onStart={startNumberEntry} />}
+        {screen === 'numbers' && <Numbers room={room} me={me} myPlayer={myPlayer} onChange={updateMyNumber} onLock={lockNumbers} onDemoLockAll={demoLockAll} />}
+        {screen === 'reveal' && <Reveal room={room} onArena={() => setScreen('arena')} />}
+        {screen === 'arena' && <Arena room={room} players={players} totals={totals} isHost={isHost} currentRoundIndex={currentRoundIndex} currentResult={currentResult} spinning={spinning} spinDisplay={spinDisplay} flashState={flashState} onSpin={spinRound} onNext={nextRound} />}
+        {room?.status === 'reveal_board' && screen !== 'reveal' && <Reveal room={room} onArena={() => setScreen('arena')} />}
+        {screen === 'summary' && room?.status === 'completed' && <FinalResults players={players} totals={totals} miniGames={room.miniGames} isHost={isHost} onNewGame={startNewGame} />}
+        {toast && <div className="toast">{toast}</div>}
+      </div>;
+    }
+
+    function TopBar({ room, me, onReset }) {
+      return <div className="topbar">
+        <div className="logo"><span className="logo-dot"></span>RND<span className="accent">M</span></div>
+        <button className="room-chip" onClick={onReset}><span>ROOM</span><strong>{room?.code}</strong></button>
+      </div>;
+    }
+
+    function Login({ onCreate, onJoin, error }) {
+      const [nickname, setNickname] = useState('');
+      const [code, setCode] = useState('');
+      return <div className="hero">
+        <div className="hero-title">RND<span>M</span></div>
+        <div className="tagline">LOCK. SPIN. WIN.</div>
+        {error && <div className="error">{error}</div>}
+        <div className="card glow">
+          <label className="label">Nickname</label>
+          <input className="input" value={nickname} onChange={e => setNickname(e.target.value)} placeholder="Enter your name" maxLength="16" />
+          <div style={{height:12}}></div>
+          <label className="label">Room Code</label>
+          <input className="input mono" value={code} onChange={e => setCode(e.target.value.toUpperCase())} placeholder="ABCD" maxLength="4" />
+          <div style={{height:14}}></div>
+          <div className="row">
+            <button className="btn btn-primary" disabled={!nickname.trim()} onClick={() => onCreate(nickname.trim())}>Create</button>
+            <button className="btn btn-magenta" disabled={!nickname.trim() || !code.trim()} onClick={() => onJoin(nickname.trim(), code.trim())}>Join</button>
+          </div>
+        </div>
+        <div className="hint">V1 prototype note: this file contains the full UI and game logic. Firebase sync can be connected after you paste your Firebase config.</div>
+      </div>;
+    }
+
+    function Lobby({ room, isHost, onDemoFill, onStart }) {
+      return <div className="screen">
+        <div className="screen-title">Lobby</div>
+        <div className="screen-sub">Waiting for exactly 3 players</div>
+        <div className="card">
+          <div className="label">Room Code</div>
+          <div style={{fontSize:38, fontWeight:800, letterSpacing:'.12em', color:'var(--cyan)'}} className="mono">{room.code}</div>
+        </div>
+        <div className="status-grid">
+          {[0,1,2].map(i => <PlayerCard key={i} player={room.players[i]} slot={i} />)}
+        </div>
+        <div style={{height:14}}></div>
+        {isHost && <div className="row">
+          <button className="btn btn-ghost" onClick={onDemoFill}>Demo Fill</button>
+          <button className="btn btn-primary" disabled={room.players.length !== 3} onClick={onStart}>Start</button>
+        </div>}
+      </div>;
+    }
+
+    function PlayerCard({ player, slot }) {
+      if (!player) return <div className="player-card"><div className="avatar">?</div><div><div className="p-name">Waiting...</div><div className="p-meta">Player {slot + 1}</div></div><span className="badge wait">Open</span></div>;
+      return <div className="player-card">
+        <div className="avatar">{player.nickname[0]?.toUpperCase()}</div>
+        <div><div className="p-name">{player.nickname}</div><div className="p-meta">Player {slot + 1}</div></div>
+        <span className={'badge ' + (player.isHost ? 'host' : player.locked ? 'locked' : 'wait')}>{player.isHost ? 'Host' : player.locked ? 'Locked' : 'Ready'}</span>
+      </div>;
+    }
+
+    function Numbers({ room, me, myPlayer, onChange, onLock, onDemoLockAll }) {
+      return <div className="screen">
+        <div className="screen-title">Numbers</div>
+        <div className="screen-sub">Enter 10 numbers from 00 to 99</div>
+        <div className="card glow">
+          <div className="numbers-grid">
+            {myPlayer.numbers.map((n, i) => <div className="num-field" key={i}>
+              <span>#{i + 1}</span>
+              <input className="num-input" disabled={myPlayer.locked} value={n} type="number" min="0" max="99" onChange={e => onChange(i, e.target.value)} />
+            </div>)}
+          </div>
+          <div style={{height:14}}></div>
+          <button className="btn btn-primary" disabled={myPlayer.locked} onClick={onLock}>{myPlayer.locked ? 'Locked' : 'Lock Numbers'}</button>
+        </div>
+        <div className="card">
+          <div className="label">Lock Status</div>
+          <div className="status-grid">{room.players.map((p, i) => <PlayerCard key={p.id} player={p} slot={i} />)}</div>
+        </div>
+        <button className="btn btn-magenta" onClick={onDemoLockAll}>Demo Lock All & Reveal</button>
+      </div>;
+    }
+
+    function Reveal({ room, onArena }) {
+      return <div className="screen">
+        <div className="screen-title">Reveal Board</div>
+        <div className="screen-sub">All numbers are now visible</div>
+        <div className="table-wrap">
+          <table>
+            <thead><tr><th>Mini</th>{room.players.map(p => <th key={p.id}>{p.nickname}</th>)}</tr></thead>
+            <tbody>{Array.from({length:10}).map((_, i) => <tr key={i}><td>{i + 1}</td>{room.players.map(p => <td key={p.id}>{pad2(p.numbers[i])}</td>)}</tr>)}</tbody>
+          </table>
+        </div>
+        <div style={{height:14}}></div>
+        <button className="btn btn-primary" onClick={onArena}>Enter RNG Arena</button>
+      </div>;
+    }
+
+    function Arena({ room, players, totals, isHost, currentRoundIndex, currentResult, spinning, spinDisplay, flashState, onSpin, onNext }) {
+      const roundDone = !!currentResult;
+      return <div className="screen">
+        <div className="screen-title">RNG Arena</div>
+        <div className="screen-sub">Host controls the spin</div>
+        <div className="card arena-card glow">
+          <div className="round-pill">Mini-Game {currentRoundIndex + 1} / 10</div>
+          <div className={'slot-window ' + (spinning ? 'spinning' : '') + ' ' + flashState}>
+            <div className="slot-number">{pad2(spinDisplay)}</div>
+          </div>
+          <div className="pick-row">
+            {players.map(p => {
+              const isWin = currentResult?.winnerIds?.includes(p.id);
+              return <div key={p.id} className={'pick-card ' + (isWin ? (currentResult.isJackpot ? 'jackpot' : 'win') : '')}>
+                <div className="pick-name">{p.nickname}</div>
+                <div className="pick-num">{pad2(p.numbers[currentRoundIndex])}</div>
+                <div className="pick-diff">{currentResult ? 'DIFF ' + currentResult.differences[p.id] : 'LOCKED'}</div>
+              </div>;
+            })}
+          </div>
+          {!roundDone && <button className="btn btn-magenta" disabled={!isHost || spinning} onClick={onSpin}>{spinning ? 'Spinning...' : 'Spin'}</button>}
+          {roundDone && <ResultPanel result={currentResult} players={players} />}
+          {roundDone && <div style={{height:12}}></div>}
+          {roundDone && isHost && <button className="btn btn-primary" onClick={onNext}>{currentRoundIndex >= 9 ? 'Complete Game' : 'Next Round'}</button>}
+        </div>
+        <div className="card">
+          <div className="label">Running Balance</div>
+          <div className="result-list">{players.map(p => <div className="result-row" key={p.id}><strong>{p.nickname}</strong><span className={'amount ' + (totals[p.id] > 0 ? 'win' : totals[p.id] < 0 ? 'loss' : 'draw')}>{totals[p.id] > 0 ? '+' : ''}{totals[p.id]} THB</span></div>)}</div>
+        </div>
+      </div>;
+    }
+
+    function ResultPanel({ result, players }) {
+      return <div>
+        <div className="label">{result.label}</div>
+        <div className="result-list">
+          {players.map(p => {
+            const amt = result.result[p.id] || 0;
+            return <div className="result-row" key={p.id}>
+              <strong>{p.nickname}</strong>
+              <span className={'amount ' + (amt > 0 ? 'win' : amt < 0 ? 'loss' : 'draw')}>{amt > 0 ? '+' : ''}{amt} THB</span>
+            </div>;
+          })}
+        </div>
+      </div>;
+    }
+
+    function FinalResults({ players, totals, miniGames, isHost, onNewGame }) {
+      const sorted = players.slice().sort((a,b) => totals[b.id] - totals[a.id]);
+      const winners = sorted.filter(p => totals[p.id] > 0);
+      const losers = sorted.filter(p => totals[p.id] < 0);
+      const draws = sorted.filter(p => totals[p.id] === 0);
+
+      const settlements = (() => {
+        const debtors = players.filter(p => totals[p.id] < 0).map(p => ({ ...p, amount: Math.abs(totals[p.id]) }));
+        const creditors = players.filter(p => totals[p.id] > 0).map(p => ({ ...p, amount: totals[p.id] }));
+        const rows = [];
+        let d = 0, c = 0;
+        while (d < debtors.length && c < creditors.length) {
+          const pay = Math.min(debtors[d].amount, creditors[c].amount);
+          if (pay > 0) rows.push({ from: debtors[d].nickname, to: creditors[c].nickname, amount: pay });
+          debtors[d].amount -= pay;
+          creditors[c].amount -= pay;
+          if (debtors[d].amount === 0) d++;
+          if (creditors[c].amount === 0) c++;
+        }
+        return rows;
+      })();
+
+      return <div className="screen">
+        <div className="screen-title">Game Summary</div>
+        <div className="screen-sub">All 10 mini-games completed</div>
+
+        <div className="card glow">
+          <div className="label">Final Winnings / Losings</div>
+          <div className="result-list">
+            {sorted.map((p, index) => <div className="result-row" key={p.id}>
+              <strong>{index === 0 && totals[p.id] > 0 ? '👑 ' : ''}{p.nickname}</strong>
+              <span className={'amount ' + (totals[p.id] > 0 ? 'win' : totals[p.id] < 0 ? 'loss' : 'draw')}>
+                {totals[p.id] > 0 ? '+' : ''}{totals[p.id]} THB
+              </span>
+            </div>)}
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="label">Settlement</div>
+          {settlements.length === 0 ? <div className="hint">No payment needed. Everyone is even.</div> :
+            <div className="result-list">
+              {settlements.map((s, i) => <div className="result-row" key={i}>
+                <strong>{s.from} pays {s.to}</strong>
+                <span className="amount loss">{s.amount} THB</span>
+              </div>)}
+            </div>
+          }
+        </div>
+
+        <div className="card">
+          <div className="label">Outcome Groups</div>
+          <div className="hint">
+            Winners: {winners.length ? winners.map(p => p.nickname).join(', ') : 'None'}<br />
+            Losers: {losers.length ? losers.map(p => p.nickname).join(', ') : 'None'}<br />
+            Even: {draws.length ? draws.map(p => p.nickname).join(', ') : 'None'}
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="label">Mini-Game History</div>
+          <div className="table-wrap">
+            <table>
+              <thead><tr><th>#</th><th>RND</th><th>Result</th></tr></thead>
+              <tbody>{miniGames.map((mg, i) => mg && <tr key={i}><td>{i + 1}</td><td>{pad2(mg.randomNumber)}</td><td>{mg.label}</td></tr>)}</tbody>
+            </table>
+          </div>
+        </div>
+
+        {isHost ? <button className="btn btn-primary" onClick={onNewGame}>Start New Game</button> : <div className="card"><div className="hint">Waiting for host to start a new game.</div></div>}
+      </div>;
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
