@@ -87,7 +87,9 @@
     }
     .card.glow { border-color: var(--magenta-dim); box-shadow: 0 0 0 1px rgba(255,0,255,.15), 0 0 34px rgba(255,0,255,.08); }
     .label { display:block; font-family:'JetBrains Mono', monospace; font-size: 10px; color: var(--text-dim); letter-spacing: .18em; text-transform: uppercase; margin-bottom: 8px; }
-    .input { width:100%; padding: 15px 16px; border-radius: 14px; border:1px solid var(--border); background: var(--bg-2); color: var(--text); font-size: 16px; font-weight: 700; }
+    .input {
+      width:100%; padding: 15px 16px; border-radius: 14px; border:1px solid var(--border); background: var(--bg-2); color: var(--text); font-size: 16px; font-weight: 700;
+    }
     .input:focus { outline: none; border-color: var(--cyan); box-shadow: 0 0 0 4px rgba(0,243,255,.10); }
     .row { display:grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
@@ -115,9 +117,28 @@
     .num-input { width:100%; padding: 20px 6px 10px; min-height: 62px; border-radius: 14px; text-align:center; font-family:'JetBrains Mono', monospace; font-size: 20px; font-weight:800; background: var(--bg-2); color:var(--text); border:1px solid var(--border); }
     .num-input:focus { outline:none; border-color: var(--cyan); }
 
-    .table-wrap { overflow-x:auto; border:1px solid var(--border); border-radius: 18px; background: var(--bg-1); }
-    table { width:100%; border-collapse: collapse; font-family:'JetBrains Mono', monospace; font-size: 11px; min-width: 430px; }
-    th, td { padding: 12px 10px; text-align:center; border-bottom:1px solid rgba(0,243,255,.08); }
+    .table-wrap {
+      overflow: hidden;
+      border:1px solid var(--border);
+      border-radius: 18px;
+      background: var(--bg-1);
+      width: 100%;
+    }
+    table {
+      width:100%;
+      border-collapse: collapse;
+      font-family:'JetBrains Mono', monospace;
+      font-size: clamp(8px, 2.4vw, 11px);
+      table-layout: fixed;
+    }
+    th, td {
+      padding: 10px 4px;
+      text-align:center;
+      border-bottom:1px solid rgba(0,243,255,.08);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
     th { color:var(--text-dim); font-size:9px; text-transform:uppercase; letter-spacing:.12em; background: rgba(255,255,255,.02); }
     td:first-child, th:first-child { color:var(--cyan); font-weight:800; }
     tr:last-child td { border-bottom:none; }
@@ -147,9 +168,31 @@
         0 0 90px rgba(255,0,255,.28),
         inset 0 0 55px rgba(255,255,255,.18);
     }
-    @keyframes slotPulse { 0% { filter: brightness(1); } 50% { filter: brightness(1.35); } 100% { filter: brightness(1); } }
-    @keyframes finalFlash { from { filter: brightness(1); transform: scale(1); } to { filter: brightness(1.9); transform: scale(1.03); } }
-    @keyframes jackpotFlash { 0% { filter: brightness(1); transform: scale(1); } 100% { filter: brightness(2.2); transform: scale(1.05); } }
+    @keyframes slotPulse {
+      0% { filter: brightness(1); }
+      50% { filter: brightness(1.35); }
+      100% { filter: brightness(1); }
+    }
+    @keyframes finalFlash {
+      from {
+        filter: brightness(1);
+        transform: scale(1);
+      }
+      to {
+        filter: brightness(1.9);
+        transform: scale(1.03);
+      }
+    }
+    @keyframes jackpotFlash {
+      0% {
+        filter: brightness(1);
+        transform: scale(1);
+      }
+      100% {
+        filter: brightness(2.2);
+        transform: scale(1.05);
+      }
+    }
     @keyframes shake { 0%{transform:translateX(0)} 25%{transform:translateX(-1px)} 75%{transform:translateX(1px)} 100%{transform:translateX(0)} }
     .slot-number { font-family:'JetBrains Mono', monospace; font-size: 70px; line-height:1; font-weight:800; color:var(--cyan); text-shadow: 0 0 22px rgba(0,243,255,.65); letter-spacing:-.08em; }
     .slot-window.spinning .slot-number { color: var(--magenta); text-shadow: 0 0 22px rgba(255,0,255,.70); }
@@ -359,6 +402,7 @@
         if (spinning || !isHost) return;
         setSpinning(true);
         setRoom(r => ({ ...r, status: 'spinning' }));
+        const started = Date.now();
         const timer = setInterval(() => setSpinDisplay(Math.floor(Math.random() * 100)), 55);
         setTimeout(() => {
           clearInterval(timer);
@@ -508,7 +552,7 @@
         <div className="screen-sub">All numbers are now visible</div>
         <div className="table-wrap">
           <table>
-            <thead><tr><th>Mini</th>{room.players.map(p => <th key={p.id}>{p.nickname}</th>)}</tr></thead>
+            <thead><tr><th style={{width:'18%'}}>Mini</th>{room.players.map(p => <th key={p.id}>{p.nickname.slice(0,6)}</th>)}</tr></thead>
             <tbody>{Array.from({length:10}).map((_, i) => <tr key={i}><td>{i + 1}</td>{room.players.map(p => <td key={p.id}>{pad2(p.numbers[i])}</td>)}</tr>)}</tbody>
           </table>
         </div>
@@ -571,8 +615,12 @@
       const draws = sorted.filter(p => totals[p.id] === 0);
 
       const settlements = (() => {
-        const debtors = players.filter(p => totals[p.id] < 0).map(p => ({ ...p, amount: Math.abs(totals[p.id]) }));
-        const creditors = players.filter(p => totals[p.id] > 0).map(p => ({ ...p, amount: totals[p.id] }));
+        const debtors = players
+          .filter(p => totals[p.id] < 0)
+          .map(p => ({ ...p, amount: Math.abs(totals[p.id]) }));
+        const creditors = players
+          .filter(p => totals[p.id] > 0)
+          .map(p => ({ ...p, amount: totals[p.id] }));
         const rows = [];
         let d = 0, c = 0;
         while (d < debtors.length && c < creditors.length) {
@@ -627,8 +675,8 @@
           <div className="label">Mini-Game History</div>
           <div className="table-wrap">
             <table>
-              <thead><tr><th>#</th><th>RND</th><th>Result</th></tr></thead>
-              <tbody>{miniGames.map((mg, i) => mg && <tr key={i}><td>{i + 1}</td><td>{pad2(mg.randomNumber)}</td><td>{mg.label}</td></tr>)}</tbody>
+              <thead><tr><th style={{width:'14%'}}>#</th><th style={{width:'18%'}}>RND</th><th>Result</th></tr></thead>
+              <tbody>{miniGames.map((mg, i) => mg && <tr key={i}><td>{i + 1}</td><td>{pad2(mg.randomNumber)}</td><td>{mg.label.replace('Closest number wins','Closest').replace('Two-way closest tie','2-way tie').replace('Exact match jackpot','Jackpot').replace('Double jackpot','Double JP')}</td></tr>)}</tbody>
             </table>
           </div>
         </div>
