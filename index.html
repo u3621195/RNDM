@@ -234,6 +234,8 @@
     const roomCode = () => Math.random().toString(36).slice(2, 6).toUpperCase();
     const clampNum = v => Math.max(0, Math.min(99, Number(v)));
     const pad2 = n => String(n).padStart(2, '0');
+    const sanitizeTwoDigitInput = v => String(v).replace(/\D/g, '').slice(0, 2);
+    const DEBUG_MODE = false;
 
     function secureRandom99() {
       const max = Math.floor(0x100000000 / 100) * 100;
@@ -254,22 +256,35 @@
       let isJackpot = false;
       let label = '';
 
+      const namesOf = list => list.map(p => p.nickname).join(' & ');
+      const setResult = (playerList, amount) => {
+        playerList.forEach(p => {
+          result[p.id] = amount;
+        });
+      };
+      const losersFrom = ids => picks.filter(p => !ids.includes(p.id));
+
       if (exact.length === 3) {
+        // Everyone hit the exact number, so nobody pays anyone.
         label = 'Triple exact tie — no win/loss';
         winnerIds = exact.map(p => p.id);
-        isJackpot = true;
+        isJackpot = false;
       } else if (exact.length === 2) {
+        // Double jackpot must always be balanced:
+        // +100 +100 -200 = 0
         isJackpot = true;
         winnerIds = exact.map(p => p.id);
-        exact.forEach(p => result[p.id] = 100);
-        picks.filter(p => !winnerIds.includes(p.id)).forEach(p => result[p.id] = -200);
-        label = 'Double jackpot';
+        setResult(exact, 100);
+        setResult(losersFrom(winnerIds), -200);
+        label = `${namesOf(exact)} +100 each`;
       } else if (exact.length === 1) {
+        // Single jackpot must always be balanced:
+        // +100 -50 -50 = 0
         isJackpot = true;
         winnerIds = [exact[0].id];
-        result[exact[0].id] = 100;
-        picks.filter(p => p.id !== exact[0].id).forEach(p => result[p.id] = -50);
-        label = 'Exact match jackpot';
+        setResult(exact, 100);
+        setResult(losersFrom(winnerIds), -50);
+        label = `${exact[0].nickname} +100`;
       } else {
         const diffs = picks.map(p => Math.abs(p.pick - randomNumber));
         const minDiff = Math.min(...diffs);
@@ -279,14 +294,32 @@
         if (winners.length === 3) {
           label = 'Three-way tie — no win/loss';
         } else if (winners.length === 2) {
-          winners.forEach(p => result[p.id] = 10);
-          picks.filter(p => !winnerIds.includes(p.id)).forEach(p => result[p.id] = -20);
-          label = 'Two-way closest tie';
+          // Closest two-way tie must always be balanced:
+          // +10 +10 -20 = 0
+          setResult(winners, 10);
+          setResult(losersFrom(winnerIds), -20);
+          label = `${namesOf(winners)} +10 each`;
         } else {
-          result[winners[0].id] = 20;
-          picks.filter(p => p.id !== winners[0].id).forEach(p => result[p.id] = -10);
-          label = 'Closest number wins';
+          // Single closest winner must always be balanced:
+          // +20 -10 -10 = 0
+          setResult(winners, 20);
+          setResult(losersFrom(winnerIds), -10);
+          label = `${winners[0].nickname} +20`;
         }
+      }
+
+      const roundTotal = Object.values(result).reduce((sum, amount) => sum + Number(amount || 0), 0);
+      if (roundTotal !== 0) {
+        console.error('Unbalanced round detected:', {
+          round: roundIndex + 1,
+          randomNumber,
+          picks,
+          exact,
+          winnerIds,
+          result,
+          roundTotal
+        });
+        throw new Error(`Round ${roundIndex + 1} is unbalanced. Total = ${roundTotal}`);
       }
 
       return {
@@ -371,7 +404,7 @@
       }
 
       function updateMyNumber(index, value) {
-        const clean = value === '' ? '' : clampNum(value);
+        const clean = sanitizeTwoDigitInput(value);
         setRoom(r => ({
           ...r,
           players: r.players.map(p => p.id === me.id ? { ...p, numbers: p.numbers.map((n, i) => i === index ? clean : n) } : p)
@@ -381,11 +414,14 @@
       function lockNumbers() {
         const nums = myPlayer.numbers.map(Number);
         if (nums.length !== 10 || myPlayer.numbers.some(n => n === '' || Number.isNaN(Number(n)))) return showToast('Enter all 10 numbers');
+        let shouldReveal = false;
         setRoom(r => {
           const updatedPlayers = r.players.map(p => p.id === me.id ? { ...p, locked: true, numbers: p.numbers.map(Number) } : p);
           const allLocked = updatedPlayers.length === 3 && updatedPlayers.every(p => p.locked);
+          shouldReveal = allLocked;
           return { ...r, players: updatedPlayers, status: allLocked ? 'reveal_board' : 'number_entry' };
         });
+        if (shouldReveal) setScreen('reveal');
         showToast('Numbers locked');
       }
 
@@ -400,6 +436,7 @@
 
       function spinRound() {
         if (spinning || !isHost) return;
+        setFlashState('');
         setSpinning(true);
         setRoom(r => ({ ...r, status: 'spinning' }));
         const started = Date.now();
@@ -410,7 +447,13 @@
           setSpinDisplay(randomNumber);
           setFlashState('flash-win');
           setRoom(r => {
-            const miniGame = calculateMiniGame(r.players, r.currentRound, randomNumber);
+            let miniGame;
+            try {
+              miniGame = calculateMiniGame(r.players, r.currentRound, randomNumber);
+            } catch (err) {
+              showToast(err.message || 'Round calculation error');
+              return { ...r, status: 'mini_game_ready' };
+            }
             if (miniGame.isJackpot) {
               setFlashState('flash-jackpot');
             }
@@ -424,6 +467,8 @@
       }
 
       function nextRound() {
+        setSpinDisplay(0);
+        setFlashState('');
         setRoom(r => {
           if (r.currentRound >= 9) {
             setScreen('summary');
@@ -508,8 +553,8 @@
           {[0,1,2].map(i => <PlayerCard key={i} player={room.players[i]} slot={i} />)}
         </div>
         <div style={{height:14}}></div>
-        {isHost && <div className="row">
-          <button className="btn btn-ghost" onClick={onDemoFill}>Demo Fill</button>
+        {isHost && <div className={DEBUG_MODE ? 'row' : ''}>
+          {DEBUG_MODE && <button className="btn btn-ghost" onClick={onDemoFill}>Demo Fill</button>}
           <button className="btn btn-primary" disabled={room.players.length !== 3} onClick={onStart}>Start</button>
         </div>}
       </div>;
@@ -532,7 +577,7 @@
           <div className="numbers-grid">
             {myPlayer.numbers.map((n, i) => <div className="num-field" key={i}>
               <span>#{i + 1}</span>
-              <input className="num-input" disabled={myPlayer.locked} value={n} type="number" min="0" max="99" onChange={e => onChange(i, e.target.value)} />
+              <input className="num-input" disabled={myPlayer.locked} value={n} type="text" inputMode="numeric" pattern="[0-9]*" maxLength="2" onChange={e => onChange(i, e.target.value)} />
             </div>)}
           </div>
           <div style={{height:14}}></div>
@@ -542,7 +587,7 @@
           <div className="label">Lock Status</div>
           <div className="status-grid">{room.players.map((p, i) => <PlayerCard key={p.id} player={p} slot={i} />)}</div>
         </div>
-        <button className="btn btn-magenta" onClick={onDemoLockAll}>Demo Lock All & Reveal</button>
+        {DEBUG_MODE && <button className="btn btn-magenta" onClick={onDemoLockAll}>Demo Lock All & Reveal</button>}
       </div>;
     }
 
